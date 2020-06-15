@@ -1,1 +1,327 @@
-Hello world
+<html>
+<head>
+<title>My Little Town</title>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<style>
+div.block {
+  width: 52px;
+  height: 54px;
+}
+</style>
+<script>
+var shuffle = 0;
+var next = [0, 0];
+var board_size = 6;
+var max_num = 15;
+var num_init_blocks = 2;
+var board = Array.from(Array(board_size), () => new Array(board_size));
+for(var i=0;i<board_size;i++)
+  for(var j=0;j<board_size;j++)
+    board[i][j]=-1;
+
+function getRandomInt(max) { return Math.floor(Math.random() * (max)); }
+
+function gaussianRand(mean, sigma) {
+  let u = Math.random()*0.682;
+  return ((u % 1e-8 > 5e-9 ? 1 : -1) * (Math.sqrt(-Math.log(Math.max(1e-9, u)))-0.618))*1.618 * sigma + mean;
+}
+
+function gaussianRandom(mean, sigma, start, end) {
+  return Math.floor(start + gaussianRand(mean, sigma) * (end - start + 1));
+}
+
+function adjacent_to(thresh, m, n) {
+  if(n-1>=0 && board[m][n-1]>=thresh) return true;
+  if(+n+1<board_size && board[m][+n+1]>=thresh) return true;
+  if(m-1>=0 && board[m-1][n]>=thresh) return true;
+  if(+m+1<board_size && board[+m+1][n]>=thresh) return true;
+  
+  return false;
+}
+
+function calc_board() {
+  var score=0;
+  for(i=0;i<board_size;i++)
+    for(j=0;j<board_size;j++)
+	{
+      if(board[i][j]>=2 && board[i][j] < 6) score = score + 2*(3^(board[i][j]-2)); // 2:2, 3:6, 4:18, 5:54
+	  if(board[i][j]>=6 && board[i][j] < 9) score = score + 4*(3^(board[i][j]-2)); // 6:324, 7:972, 8:2916
+	  if(board[i][j]>=9 && board[i][j] < 12) score = score + 3000*(4^(board[i][j]-8)); // 9:12K, 10:48K, 11:192K
+	  if(board[i][j]>=12 && board[i][j] < 15) score = score + 200000*(4^(board[i][j]-11)); // 12:800K, 13:3.2M, 14:12.8M
+	  if(board[i][j]>=15 && board[i][j] < 18) score = score + 33554432; // 15:33.55M
+	}
+  return score;
+}
+
+function merge_blocks(m, n) {
+  console.log("merge---",m,n);
+  for(i=0;i<4;i++) {
+    var add = 0;
+    var block = board[m][n];
+	if(block<1) break;
+    if(m-1>=0 && board[m-1][n]==block) { add++; board[m-1][n]=0;}
+    if(+m+1<board_size && board[+m+1][n]==block) { add++; board[+m+1][n]=0}
+    if(n-1>=0 && board[m][n-1]==block) { add++; board[m][n-1]=0}
+    if(+n+1<board_size && board[m][+n+1]==block) { add++; board[m][+n+1]=0}
+	if(add==0) break;
+    board[m][n]=block+add;
+  }
+}
+
+function merge_blocks_push(mode, m, n) {
+  switch(mode){
+    case -3: //LR
+	  for(var i=0;i<board_size;i++) merge_blocks(m,i);
+	  break;
+	case -4: //UD
+	  for(var i=0;i<board_size;i++) merge_blocks(i,n);
+	  break;
+	case -5: //CR
+	  for(var i=0;i<board_size;i++) merge_blocks(m,i);
+	  for(var i=0;i<board_size;i++) merge_blocks(i,n);
+	  break;
+  }
+}
+
+function push_blocks(mode, m, n) {
+  switch(mode) {
+    case -3: //left-right(n)
+	  for(var i=1;i<n;i++) {
+	    if(board[m][i-1]==0&&board[m][i]>0) {board[m][i-1]=board[m][i]; board[m][i]=0;}
+	  }
+	  for(var i=(board_size-1);i>n;i--) {
+	    if(board[m][i]==0&&board[m][i-1]>0) {board[m][i]=board[m][i-1]; board[m][i-1]=0;}
+	  }
+	  break;
+	case -4: //up-down(m)
+	  for(var i=1;i<m;i++) {
+	    if(board[i-1][n]==0&&board[i][n]>0) {board[i-1][n]=board[i][n]; board[i][n]=0;}
+	  }
+	  for(var i=(board_size-1);i>m;i--) {
+	    if(board[i][n]==0&&board[i-1][n]>0) {board[i][n]=board[i-1][n]; board[i-1][n]=0;}
+	  }
+	  break;
+	case -5: //cross (mn)
+	  for(var i=1;i<n;i++) {
+	    if(board[m][i-1]==0&&board[m][i]>0) {board[m][i-1]=board[m][i]; board[m][i]=0;}
+	  }
+	  for(var i=(board_size-1);i>n;i--) {
+	    if(board[m][i]==0&&board[m][i-1]>0) {board[m][i]=board[m][i-1]; board[m][i-1]=0;}
+	  }
+	  for(var i=1;i<m;i++) {
+	    if(board[i-1][n]==0&&board[i][n]>0) {board[i-1][n]=board[i][n]; board[i][n]=0;}
+	  }
+	  for(var i=(board_size-1);i>m;i--) {
+	    if(board[i][n]==0&&board[i-1][n]>0) {board[i][n]=board[i-1][n]; board[i-1][n]=0;}
+	  }
+
+	  break;
+  }
+}
+
+function count_board() {
+  var cnt=0;
+  for(i=0;i<board_size;i++)
+    for(j=0;j<board_size;j++)
+      if(board[i][j]>-1) cnt++;
+  return cnt;
+}
+
+function generate_board() {
+  if(count_board()==0) {
+    board[3][3]=0;
+  }
+  while(count_board()<12) {
+    var m = getRandomInt(board_size-2)+1;
+	var n = getRandomInt(board_size-2)+1;
+	if(adjacent_to(0, m,n)) {
+	  board[m][n]=0;
+	}
+  }
+  for(i=0;i<board_size;i++)
+    for(j=0;j<board_size;j++)
+	  if(!adjacent_to(0, i,j)) board[i][j]=-2;
+}
+
+function generate_next() {
+  for(i=0;i<2;i++) {
+    if(next[i]==0) {
+      if(getRandomInt(10)<2) { //20%
+        switch(getRandomInt(5)){
+	      case 0:
+	      case 1:
+	        next[i]=-3;
+	        break; // left-right
+	      case 2:
+	      case 3:
+		    next[i]=-4;
+	        break; // up-down
+	      case 4:
+		    next[i]=-5;
+	        break;
+	    }
+      } else {
+          next[i] = gaussianRandom(1/18,0.1,1,max_num);
+	      if(next[i]<1) next[i]=1;
+	      if(next[i]>max_num) next[i]=max_num;
+	  }
+    }
+  }
+}
+
+function display_board() {
+  var html = "<table border=1>";
+  for(i=0;i<6;i++){
+    html = html+"<tr>";
+    for(j=0;j<6;j++) {
+	  html = html+"<td><div class='block dropzone' m="+i+" n="+j+">"+get_img(board[i][j])+"</div></td>";
+	}
+	html = html+"</tr>";
+  }
+  html = html+"</table>";
+  return html;
+}
+
+function get_img(number) {
+  var img = number;
+  if(number<0) {
+    switch(number){
+	  case -1:
+	    return "";
+	    break;
+	  case -2:
+	    return "X";
+	    break;
+	  case -3:
+	    number="LR";
+	    break;
+	  case -4:
+	    number="UD";
+	    break;
+	  case -5:
+	    number="CR";
+	    break;
+	}
+  } else if(number<10) {
+    number="0"+number;
+  }
+  img = "<img src='imgs/block"+number+".png' width=52 height=54>";
+  return img
+}
+
+function update_board() {
+  for(i=0;i<6;i++){
+    for(j=0;j<6;j++) {
+	  $("div[m="+i+"][n="+j+"]").html(get_img(board[i][j]));
+	}
+  }
+}
+
+function init_blocks() {
+  for(i=0;i<num_init_blocks;i++) {
+    var block = gaussianRandom(1/18,0.1,1,max_num);
+    if(block<=0) block=1;
+    if(block>max_num) block=max_num;
+    var m = getRandomInt(board_size);
+    var n = getRandomInt(board_size);
+    while(board[m][n]!=0) {
+      m = getRandomInt(board_size);
+      n = getRandomInt(board_size);
+    }
+    board[m][n] = block;
+  }
+}
+
+function display_next() {
+  var html = "<table border=1><tr>";
+  html = html + "<td>Shuffle:"+shuffle+"</td>";
+  html = html + "<td><div id='next0' class='block drag-drop' next="+0+">"+get_img(next[0])+"</div></td>";
+  html = html + "<td><div id='next1' class='block drag-drop' next="+1+">"+get_img(next[1])+"</div></td>";
+  html = html + "</tr></table>";
+  return html;
+}
+
+function update_next() {
+  $("#next0").html(get_img(next[0]));
+  $("#next1").html(get_img(next[1]));
+}
+
+function display_score() {
+  var html = "<table border=1><tr>";
+  html = html + "<td><div id='pop'> Score : "+calc_board()+"</div></td>";
+  html = html + "</tr></table>";
+  return html;
+}
+
+function update_score() {
+  $("#pop").text("Score : "+calc_board());
+}
+
+function update_display() {
+  update_next();
+  update_board();
+  update_score();
+}
+
+function init() {
+  generate_board();
+  init_blocks();
+  generate_next();
+  $("#board").html(display_board());
+  $("#next").html(display_next());
+  $("#score").html(display_score());
+
+  $( ".drag-drop" ).draggable({
+      revert: function (droppableObj) {
+             if (droppableObj === false) {
+                 console.log('Not Dropped');
+                 return true;
+             } else {
+                 m = $(droppableObj).attr("m");
+				 n = $(droppableObj).attr("n");
+				 idx = $(this).attr("next");
+				 block = next[idx];
+				 if( block > 0 ) {
+				   console.log("Number block "+block);
+				   if( board[m][n] == 0 ) {
+				     next[idx] = 0;
+				     board[m][n] = block;
+				     generate_next();
+				     merge_blocks(m, n);
+				     update_display();
+				     return true; 
+				   } else {
+                     return true;
+				   } 
+				 } else {
+				   console.log("Push block "+block);
+				   if( board[m][n] == 0 || board[m][n] == -1 ) {
+				     next[idx] = 0;
+					 generate_next();
+					 for(var i=0;i<board_size-1;i++)
+				       push_blocks(block, m, n);
+					 merge_blocks_push(block, m, n);
+					 update_display();
+					 return true;
+				   } else {
+				     return true;
+				   }
+				 }
+             }
+         }
+  });
+  $( ".dropzone" ).droppable({
+      drop: function( event, ui ) {
+
+      }
+    });
+}
+</script>
+</head>
+<body onload=init()>
+<div id="score"></div>
+<div id="board"></div>
+<div id="next"></div>
+</body>
+</html>
