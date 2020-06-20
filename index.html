@@ -11,6 +11,7 @@ div.block {
 </style>
 <script>
 var shuffle = 0;
+var level = 1;
 var next = [0, 0];
 var board_size = 6;
 var max_num = 15;
@@ -249,6 +250,7 @@ function update_next() {
 
 function display_score() {
   var html = "<table border=1><tr>";
+  html = html + "<td><div id='level'> Level : "+level+"</div></td>";
   html = html + "<td><div id='pop'> Score : "+calc_board()+"</div></td>";
   html = html + "</tr></table>";
   return html;
