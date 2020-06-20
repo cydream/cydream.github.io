@@ -46,9 +46,25 @@ function calc_board() {
   for(i=0;i<board_size;i++)
     for(j=0;j<board_size;j++)
 	{
-      if(board[i][j]>=2) score = score + 2*(3^(board[i][j]-2));
+      if(board[i][j]>=2) {
+		var score_ = 2*(Math.pow(3,(board[i][j]-2)));
+		//console.log(i,j,board[i][j],score_,score);
+		score = score + score_;
+	  }
 	}
+
+  levelup();
   return score;
+}
+
+function levelup() {
+  // if score > level N threshold; level++
+  
+  // if level up; add_board();
+}
+
+function add_board(level) {
+  // randomly add N areas which connected to existing board areas
 }
 
 function merge_blocks(m, n) {
@@ -217,7 +233,7 @@ function update_board() {
 
 function init_blocks() {
   for(i=0;i<num_init_blocks;i++) {
-    var block = gaussianRandom(1/15,0.1,1,max_num);
+    var block = gaussianRandom(level/15,0.1,1,max_num);
     if(block<=0) block=1;
     if(block>max_num) block=max_num;
     var m = getRandomInt(board_size);
@@ -254,6 +270,7 @@ function display_score() {
 
 function update_score() {
   $("#pop").text("Score : "+calc_board());
+  $("#level").text("Level : "+level);
 }
 
 function update_display() {
